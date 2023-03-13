@@ -1,0 +1,19 @@
+{
+    "name": "renzo/interview-project-1",
+    "authors": [
+        {
+            "name": "Renzo Castillo",
+            "email": "renzofabiocastillo@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "phpunit/phpunit": "^9.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app",
+            "Tests\\": "tests"
+        }
+    }
+}
