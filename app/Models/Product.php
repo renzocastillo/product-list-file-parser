@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Exception;
+
 /**
  * Product Model
  */
@@ -38,11 +40,16 @@ class Product {
 	/**
 	 * @param $make string Brand name
 	 * @param $model string  Model name
+	 *
+	 * @throws Exception
 	 */
 	public function __construct( string $make, string $model){
-
-		$this->make = $make;
-		$this->model = $model;
+		if(!empty($make) && !empty($model) ){
+			$this->make  = $make;
+			$this->model = $model;
+		}else{
+			throw new Exception("Error: Can't create new Product because make and model parameters can't be empty strings \n");
+		}
 	}
 
 	/**
