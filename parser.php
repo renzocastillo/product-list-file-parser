@@ -17,7 +17,25 @@ if ( ( isset( $options["u"] ) || isset( $options["unique-combinations"] ) ) ) {
 
 if ( isset( $src_file_path, $combination_file_path ) ) {
 	$parser = new ParserController( $src_file_path, $combination_file_path );
-	$parser->parse();
+	$parser->processProductList();
+	getMemoryUsage();
 } else {
 	echo 'Please define your file path and your unique combinations file path';
+}
+
+
+function formatBytes($bytes, $precision = 2) {
+	$units = array("b", "kb", "mb", "gb", "tb");
+
+	$bytes = max($bytes, 0);
+	$pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+	$pow = min($pow, count($units) - 1);
+
+	$bytes /= (1 << (10 * $pow));
+
+	return round($bytes, $precision) . " " . $units[$pow];
+}
+
+function getMemoryUsage(){
+	print formatBytes(memory_get_peak_usage());
 }
