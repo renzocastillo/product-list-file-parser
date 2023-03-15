@@ -2,74 +2,68 @@
 
 namespace App\Controllers;
 use App\Models\Product;
+use Exception;
 use function array_column;
 use function array_search;
 use function fgets;
 use function fopen;
-use function PHPUnit\Framework\throwException;
 use function serialize;
 
 class ParserController {
-	private string $src_file_path;
-	private string $output_file_path;
-	public function __construct( $src_file_path, $combinations_file_path ) {
-
-		$this->src_file_path    = $src_file_path;
-		$this->output_file_path = $combinations_file_path;
-	}
-
-	public function processProductList() {
+	public function processProductList(string $src_file_path,string $combinations_file_path) {
+		// validate paths
 		try {
-			// validate paths
-			$src_file_path = $this->validateFilePath( $this->src_file_path ,'r');
-			$output_file_path = $this->validateFilePath( $this->output_file_path,'w' );
-			$source_file = fopen( $src_file_path['path'], "r" ) or die( "Unable to open file!" );
-			$file_headers = $this->parseFileLine( fgets( $source_file ), $src_file_path['extension'] );
-			//Retrieve headers  to recognize the column order
-			$col = $this->getColumnsOrderFromHeader( $file_headers );
+			$src_file_path = $this->validateFile( $src_file_path, 'r');
+			$combinations_file_path = $this->validateFile( $combinations_file_path, 'w' );
 			//Create an array which saves each combination
 			$combinations = [];
 			$line_count   = 1;
 			// read file line with generator
-			$lines = $this->getFileLines( $src_file_path['path'] );
+			$lines = $this->getFileLines( $src_file_path );
 			foreach ( $lines as $line ) {
 				if ( ! empty( $line ) ) {
 					// process the  line
-					$product_row = $this->parseFileLine( $line, $src_file_path['extension'] );
-					//print_r( $product_row );
-					// save each row in Product model
-					try {
-						$product = new Product( $product_row[ $col['make'] ], $product_row[ $col['model'] ] );
-						$product->setCondition( $product_row[ $col['condition'] ] );
-						$product->setGrade( $product_row[ $col['grade'] ] );
-						$product->setCapacity( $product_row[ $col['capacity'] ] );
-						$product->setColour( $product_row[ $col['colour'] ] );
-						$product->setNetwork( $product_row[ $col['network'] ] );
-						// output the product object
-						print_r($product);
-						$product_string = serialize( $product );
-						//echo $product_string."\n";
-						// Compare the current row and check if it already exists at the combination array
-						$key = array_search( $product_string, array_column( $combinations, 'product' ) );
-						if ( $key ) {
-							//echo 'found occurrence: '.$key."\n";
-							//print_r($combinations[$key]);
-							// If it already exists don't add it but increase the count
-							$combinations[ $key ]['count'] ++;
-						} else {
-							$combinations[] = [ 'product' => $product_string, 'count' => 1 ];
+					$row = $this->parseFileLine( $line,  pathinfo($src_file_path)['extension'] );
+					if ( $line_count == 1 ) {
+						//Retrieve headers  to recognize the column order
+						$col = $this->getColumnsOrderFromHeader( $row );
+
+					} else {
+						//print_r( $product_row );
+						// save each row in Product model
+						try {
+							$product = new Product( $row[ $col['make'] ], $row[ $col['model'] ] );
+							$product->setCondition( $row[ $col['condition'] ] );
+							$product->setGrade( $row[ $col['grade'] ] );
+							$product->setCapacity( $row[ $col['capacity'] ] );
+							$product->setColour( $row[ $col['colour'] ] );
+							$product->setNetwork( $row[ $col['network'] ] );
+							// output the product object
+							print_r( $product );
+							$product_string = serialize( $product );
+							//echo $product_string."\n";
+							// Compare the current row and check if it already exists at the combination array
+							$key = array_search( $product_string, array_column( $combinations, 'product' ) );
+							if ( $key ) {
+								//echo 'found occurrence: '.$key."\n";
+								//print_r($combinations[$key]);
+								// If it already exists don't add it but increase the count
+								$combinations[ $key ]['count'] ++;
+							} else {
+								$combinations[] = [ 'product' => $product_string, 'count' => 1 ];
+							}
+						} catch ( Exception $e ) {
+							echo "Failed to process current line $line_count: $line";
+							echo $e->getMessage();
 						}
-					} catch ( \Exception $e ) {
-						echo "Failed to process current line $line_count: $line";
-						echo $e->getMessage();
 					}
 				}
 				$line_count ++;
 			}
 			//print_r($combinations);
 			// Once all the file has been read now print the combination array in unique combination file
-			$this->outputCombination( $combinations, $output_file_path['path'] );
-		} catch ( \Exception $e ) {
+			$this->outputCombination( $combinations, $combinations_file_path );
+		} catch ( Exception $e ) {
 			echo $e->getMessage();
 		}
 	}
@@ -85,16 +79,24 @@ class ParserController {
 	}
 
 	/**
-	 * @param $file_path string file path
-	 * @param $mode string r for read mode and w for write mode
-	 *
-	 * @return array
-	 * @throws \Exception
+	 * @throws Exception
 	 */
-	public function validateFilePath( string $file_path, string $mode): array {
-		//echo $src_file_path;
-		if(!in_array($mode,['r','w'])){
-			throw new \Exception("Error: Cant use $mode mode.Only r,w file modes are available \n");
+	public function validateFile($path,$mode): string {
+		return $this->validateFilePermissions($this->validateFilePath($path),$mode);
+	}
+
+	/**
+	 * @param $file_path string file path
+	 *
+	 * @return string
+	 * @throws Exception
+	 */
+	public function validateFilePath( string $file_path): string {
+		if(empty ($file_path)){
+			throw new Exception("Error: File path value is empty \n");
+		}
+		if(!strpos($file_path, ".")){
+			throw new Exception("Error: File path doesn't have an extension format \n");
 		}
 		$path_parts = pathinfo($file_path);
 		$extension = $path_parts['extension'];
@@ -102,26 +104,38 @@ class ParserController {
 		$allowed_extensions = ['csv','tsv','json','xml'];
 		// validate if file extension is authorized
 		if(!in_array($extension,$allowed_extensions)){
-			throw new \Exception("Error: Can't use $base_name because .$extension is not a valid extension. Only ".implode(',',$allowed_extensions)." extensions are allowed.\n");
+			throw new Exception("Error: Can't use $base_name because .$extension is not a valid extension. Only ".implode(',',$allowed_extensions)." extensions are allowed.\n");
+		}
+		return $file_path;
+	}
+
+	/**
+	 * @param $file_path string file path
+	 * @param $mode string r for read mode and w for write mode
+	 * @return  string
+	 * @throws Exception
+	 */
+	public function validateFilePermissions( string $file_path, string $mode): string {
+		if(!in_array($mode,['r','w'])){
+			throw new Exception("Error: Cant use $mode mode.Only r,w file modes are available \n");
 		}
 		if($mode == 'r'){
 			// validate if file exists/
 			if( !file_exists($file_path) ){
-				throw new \Exception("Error: Can't use $base_name because the file doesn't exist.\n");
+				throw new \Exception("Error: Can't use $file_path because the file doesn't exist.\n");
 			}
 			// validate is field path is readable
 			if(!is_readable($file_path)){
-				throw new \Exception("Error: Can't use $base_name because the file is not readable.\n");
+				throw new \Exception("Error: Can't use $file_path because the file is not readable.\n");
 			}
 		}else{
 			// validate if file exists and is writable
 			if( file_exists($file_path) && !is_writable($file_path) ){
-				throw new \Exception("Error: Can't use $base_name because the file is not writable.\n");
+				throw new \Exception("Error: Can't use $file_path because the file is not writable.\n");
 			}
 		}
-		return ['path'=>$file_path,'extension'=>$extension];
+		return $file_path;
 	}
-
 
 	public function outputCombination($combinations_array,$output_file_path){
 		//first we open the file
@@ -141,13 +155,13 @@ class ParserController {
 			$product = unserialize($combination['product']);
 			$count = $combination['count'];
 			$combination_row = [
-				$product->getMake(),
-				$product->getModel(),
-				$product->getColour(),
-				$product->getCapacity(),
-				$product->getNetwork(),
-				$product->getGrade(),
-				$product->getCondition(),
+				$product->make,
+				$product->model,
+				$product->colour,
+				$product->capacity,
+				$product->network,
+				$product->grade,
+				$product->condition,
 				$count
 			];
 			//we write per each line

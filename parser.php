@@ -1,5 +1,5 @@
 <?php
-require_once('vendor/autoload.php');
+require_once( 'vendor/autoload.php' );
 
 use App\Controllers\ParserController;
 
@@ -9,31 +9,29 @@ $combination_file_path = $options['combinations_file_path'];
 $memory_usage          = $options['memory_usage'];
 $time                  = $options['time'];
 
-if ( isset( $src_file_path, $combination_file_path ) ) {
-	$parser = new ParserController( $src_file_path, $combination_file_path );
-	if ( ! empty( $time ) ) {
-		$time_start = microtime( true );
-	}
 
-	$parser->processProductList();
-
-	if ( ! empty( $time ) ) {
-		$time_end       = microtime( true );
-		$execution_time = number_format( ( $time_end - $time_start ) / 60, 2 );
-		echo "Total execution time: $execution_time minutes \n";
-	}
-	if ( ! empty( $memory_usage ) ) {
-		getMemoryUsage();
-	}
-} else {
-	echo 'Please define your file path and your unique combinations file path';
+if ( ! empty( $time ) ) {
+	$time_start = microtime( true );
 }
+
+$parser = new ParserController();
+$parser->processProductList( $src_file_path, $combination_file_path );
+
+if ( ! empty( $time ) ) {
+	$time_end = microtime( true );
+	getExecutionTime( $time_start, $time_end );
+}
+
+if ( ! empty( $memory_usage ) ) {
+	getMemoryUsage();
+}
+
 
 function getOptions(): array {
 	$short_options = "f:u:m::t::";
-	$long_options  = [ "file:", "unique-combinations:" ,"memory-usage::","time::"];
-	$src_file_path = $combination_file_path = $memory_usage= $time = '';
-	$options = getopt( $short_options, $long_options );
+	$long_options  = [ "file:", "unique-combinations:", "memory-usage::", "time::" ];
+	$src_file_path = $combination_file_path = $memory_usage = $time = '';
+	$options       = getopt( $short_options, $long_options );
 	if ( ( isset( $options["f"] ) || isset( $options["file"] ) ) ) {
 		$src_file_path = $options["f"] ?? $options["file"];
 	}
@@ -48,24 +46,30 @@ function getOptions(): array {
 	}
 
 	return [
-		'src_file_path'=>$src_file_path,
-		'combination_file_path'=>$combination_file_path,
-		'memory_usage'=>$memory_usage,
-		'time'=>$combination_file_path
+		'src_file_path'          => $src_file_path,
+		'combinations_file_path' => $combination_file_path,
+		'memory_usage'           => $memory_usage,
+		'time'                   => $time
 	];
 }
-function formatBytes($bytes, $precision = 2): string {
-	$units = array("b", "kb", "mb", "gb", "tb");
 
-	$bytes = max($bytes, 0);
-	$pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-	$pow = min($pow, count($units) - 1);
+function formatBytes( $bytes, $precision = 2 ): string {
+	$units = array( "b", "kb", "mb", "gb", "tb" );
 
-	$bytes /= (1 << (10 * $pow));
+	$bytes = max( $bytes, 0 );
+	$pow   = floor( ( $bytes ? log( $bytes ) : 0 ) / log( 1024 ) );
+	$pow   = min( $pow, count( $units ) - 1 );
 
-	return round($bytes, $precision) . " " . $units[$pow];
+	$bytes /= ( 1 << ( 10 * $pow ) );
+
+	return round( $bytes, $precision ) . " " . $units[ $pow ];
 }
 
-function getMemoryUsage(){
-	echo "Total memory usage: ".formatBytes(memory_get_peak_usage())."\n";
+function getMemoryUsage() {
+	echo "Total memory usage: " . formatBytes( memory_get_peak_usage() ) . "\n";
+}
+
+function getExecutionTime( $time_start, $time_end ) {
+	$execution_time = number_format( ( $time_end - $time_start ) / 60, 2 );
+	echo "Total execution time: $execution_time minutes \n";
 }

@@ -11,31 +11,31 @@ class Product {
 	/**
 	 * @var string Brand name
 	 */
-	private string $make;
+	public string $make;
 	/**
 	 * @var string Model name
 	 */
-	private string $model;
+	public string $model;
 	/**
 	 * @var string Colour name
 	 */
-	private string $colour;
+	public string $colour;
 	/**
 	 * @var string GB Spec name
 	 */
-	private string $capacity;
+	public string $capacity;
 	/**
 	 * @var string Network name
 	 */
-	private string $network;
+	public string $network;
 	/**
 	 * @var string Grade name
 	 */
-	private string $grade;
+	public string $grade;
 	/**
 	 * @var string Condition name
 	 */
-	private string $condition;
+	public string $condition;
 
 	/**
 	 * @param $make string Brand name
