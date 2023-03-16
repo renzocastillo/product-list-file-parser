@@ -22,16 +22,19 @@ class ParserController {
 			$lines = $this->getFileLines( $src_file_path );
 			foreach ( $lines as $line ) {
 				if ( ! empty( $line ) ) {
+					//print_r($line);
 					// process the  line
 					$row = $this->parseFileLine( $line,  pathinfo($src_file_path)['extension'] );
+					//print_r($row);
 					if ( $line_count == 1 ) {
 						//Retrieve headers  to recognize the column order
 						$col = $this->getColumnsOrderFromHeader( $row );
+						//print_r( $col );
 
 					} else {
-						//print_r( $product_row );
-						// save each row in Product model
 						try {
+							//print_r( $row );
+							// save each row in Product model
 							$product = new Product( $row[ $col['make'] ], $row[ $col['model'] ] );
 							$product->setCondition( $row[ $col['condition'] ] );
 							$product->setGrade( $row[ $col['grade'] ] );
@@ -53,7 +56,7 @@ class ParserController {
 								$combinations[] = [ 'product' => $product_string, 'count' => 1 ];
 							}
 						} catch ( Exception $e ) {
-							echo "Failed to process current line $line_count: $line";
+							echo "Failed to process line $line_count: $line \n";
 							echo $e->getMessage();
 						}
 					}
@@ -186,8 +189,11 @@ class ParserController {
 		//print_r($file_headers);
 
 		$positions_array=[];
+		//we start looping through each file header
 		foreach($file_headers as $key=> $value){
+			//we search if the current file header exists in the model headers array and we retrieve the key
 			$new_key=array_search($value,$model_headers);
+			// we create a positions array which has the positions as values
 			$positions_array[$new_key]=$key;
 		}
 		//print_r($positions_array);
@@ -196,12 +202,13 @@ class ParserController {
 
 	public function parseFileLine($line,$file_extension){
 		$row=[];
+		$line = trim($line);
 		switch ($file_extension){
 			case 'csv':
-				$row= explode(',',trim(str_replace('"', '',$line)));
+				$row= explode(',',$line);
 				break;
 			case 'tsv':
-				$row= explode("\t",trim(str_replace('"', '',$line)));
+				$row= explode("\t",$line);
 				break;
 			case 'json':
 				break;
@@ -209,6 +216,9 @@ class ParserController {
 				break;
 			default:
 				break;
+		}
+		foreach ($row as &$col) {
+			$col= str_replace('"', '', $col);
 		}
 		return $row;
 	}
